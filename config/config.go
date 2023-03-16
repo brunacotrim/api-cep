@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 
@@ -26,25 +25,25 @@ type CepAbertoCfg struct {
 func New() (*Config, error) {
 	errLoad := godotenv.Load()
 	if errLoad != nil {
-		log.Fatal("error loading .env file")
+		return nil, fmt.Errorf("error loading .env file: %w", errLoad)
 	}
 
-	viaCepEnable, err := strconv.ParseBool(GetEnvDefault("VIACEP_ENABLE", "false"))
+	viaCepEnabled, err := strconv.ParseBool(GetEnvDefault("VIACEP_ENABLE", "false"))
 	if err != nil {
-		return nil, fmt.Errorf("error parse bool config enabled ViaCep - VIACEP_ENABLE: %w", err)
+		return nil, fmt.Errorf("error parse bool config - VIACEP_ENABLE: %w", err)
 	}
 
 	viaCep := ViaCepCfg{
-		Enabled: viaCepEnable,
+		Enabled: viaCepEnabled,
 	}
 
-	cepAbertoEnable, err := strconv.ParseBool(GetEnvDefault("CEPABERTO_ENABLE", "false"))
+	cepAbertoEnabled, err := strconv.ParseBool(GetEnvDefault("CEPABERTO_ENABLE", "false"))
 	if err != nil {
-		return nil, fmt.Errorf("error parse bool config enabled CepAberto - CEPABERTO_ENABLE: %w", err)
+		return nil, fmt.Errorf("error parse bool config - CEPABERTO_ENABLE: %w", err)
 	}
 
 	cepAberto := CepAbertoCfg{
-		Enabled: cepAbertoEnable,
+		Enabled: cepAbertoEnabled,
 	}
 
 	if cepAberto.Enabled {
