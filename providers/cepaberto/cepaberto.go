@@ -35,7 +35,7 @@ type State struct {
 func New(cfg *config.Config) *CepAberto {
 	return &CepAberto{
 		config: cfg,
-		name:   "cepaberto",
+		name:   "CepAberto",
 		token:  cfg.CepAbertoCfg.Token,
 	}
 }
@@ -51,18 +51,22 @@ func (c *CepAberto) GetDataCep(cep string) (dataCep models.DataCep, err error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return dataCep, fmt.Errorf("error preparing request CepAberto: %v", err)
+		return dataCep, fmt.Errorf("error preparing request: %v", err)
 	}
 	req.Header.Add("Authorization", "Token token="+c.token)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return dataCep, fmt.Errorf("error making request CepAberto: %v", err)
+		return dataCep, fmt.Errorf("error making request: %v", err)
+	}
+
+	if resp.StatusCode != 200 {
+		return dataCep, fmt.Errorf("request return status code: %v", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return dataCep, fmt.Errorf("error read body response CepAberto: %v", err)
+		return dataCep, fmt.Errorf("error read body response: %v", err)
 	}
 
 	defer resp.Body.Close()
@@ -70,12 +74,12 @@ func (c *CepAberto) GetDataCep(cep string) (dataCep models.DataCep, err error) {
 	var data DataCepAberto
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		return dataCep, fmt.Errorf("error parse response CepAberto: %v", err)
+		return dataCep, fmt.Errorf("error parse response: %v", err)
 	}
 
 	dataCep = c.ConvertData(data)
 	if err != nil {
-		return dataCep, fmt.Errorf("error convert data CepAberto: %v", err)
+		return dataCep, fmt.Errorf("error convert data: %v", err)
 	}
 
 	return dataCep, nil

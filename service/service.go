@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"api-cep/config"
 	"api-cep/models"
@@ -46,41 +47,58 @@ func (s *Service) StartServer() {
 func (s *Service) GetDataCepHandler(w http.ResponseWriter, r *http.Request) {
 
 	cep := r.URL.Path[len("/cep/"):]
+	var statusCode int
 	if cep == "" {
 		log.Println("cep not informed")
-		w.WriteHeader(http.StatusBadRequest)
+		statusCode = http.StatusBadRequest
 		return
 	}
 	cep, err := s.CepNumbers(cep)
 	if err != nil {
 		log.Printf("invalid cep %s: %v\n", cep, err)
-		w.WriteHeader(http.StatusBadRequest)
+		statusCode = http.StatusBadRequest
 		return
 	}
 
-	resp := models.DataCep{}
-
-	for _, p := range s.providers {
-		resp, err = p.GetDataCep(cep)
-		if err != nil {
-			log.Printf("error GetDataCep by %s: %v", p.GetName(), err)
-			continue
-		}
-
-		if resp.Cep != "" {
-			resp.Cep, err = s.CepFormat(resp.Cep)
-			if err != nil {
-				log.Printf("error CepFormat by %s: %v", p.GetName(), err)
-				continue
-			}
-			break
-		}
-	}
+	resp := s.GetCep(cep)
 
 	w.Header().Set("Content-Type", "application/json")
 	if resp.Cep == "" {
-		w.WriteHeader(http.StatusBadRequest)
+		statusCode = http.StatusInternalServerError
+	} else {
+		statusCode = http.StatusOK
 	}
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(resp)
+}
+
+func (s *Service) GetCep(cep string) (resp models.DataCep) {
+
+	ch := make(chan bool)
+	var err error
+
+	for _, p := range s.providers {
+		go func(p ServiceCep) {
+			resp, err = p.GetDataCep(cep)
+			if err != nil {
+				log.Printf("error GetDataCep by %s: %v", p.GetName(), err)
+			}
+
+			if resp.Cep != "" {
+				resp.Cep, err = s.CepFormat(cep)
+				if err != nil {
+					log.Printf("error CepFormat by %s: %v", p.GetName(), err)
+				} else {
+					ch <- true
+				}
+			}
+		}(p)
+	}
+
+	select {
+	case <-ch:
+		return resp
+	case <-time.After(time.Second * 5):
+		return resp
+	}
 }
